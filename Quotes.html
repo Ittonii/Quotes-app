@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Friends' Quotes - Win95 Style</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  body {
+    background: #C0C0C0;
+    font-family: 'MS Sans Serif', 'Arial', sans-serif;
+    margin: 0;
+    padding: 10px;
+    user-select: none;
+  }
+
+  h1 {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 15px;
+    color: black;
+  }
+
+  #container {
+    max-width: 400px;
+    margin: auto;
+    background: #C0C0C0;
+    padding: 10px;
+    border: 2px solid white;
+    box-shadow:
+      inset -1px -1px 0 white,
+      inset 1px 1px 0 #808080;
+  }
+
+  #quotesList {
+    background: white;
+    height: 250px;
+    overflow-y: auto;
+    font-size: 12px;
+    border: 2px solid #000080;
+    padding: 5px;
+    margin-bottom: 10px;
+    font-family: 'MS Sans Serif', 'Arial', sans-serif;
+  }
+
+  .quote-item {
+    padding: 3px 5px;
+    border-bottom: 1px solid #ccc;
+    cursor: pointer;
+  }
+  .quote-item.selected {
+    background-color: #000080;
+    color: white;
+  }
+
+  label {
+    font-size: 12px;
+    display: block;
+    margin-top: 8px;
+    font-weight: bold;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 4px;
+    font-family: 'MS Sans Serif', 'Arial', sans-serif;
+    font-size: 12px;
+    border: 2px solid white;
+    box-shadow:
+      inset -1px -1px 0 white,
+      inset 1px 1px 0 #808080;
+  }
+
+  button {
+    margin-top: 10px;
+    font-family: 'MS Sans Serif', 'Arial', sans-serif;
+    font-size: 12px;
+    padding: 5px 10px;
+    background: #C0C0C0;
+    border: 2px solid white;
+    box-shadow:
+      -1px -1px 0 white,
+      1px 1px 0 #808080;
+    cursor: pointer;
+  }
+
+  button:active {
+    border: 2px solid #808080;
+    box-shadow:
+      inset -1px -1px 0 white,
+      inset 1px 1px 0 #404040;
+  }
+
+  #buttons {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 420px) {
+    #container {
+      width: 95vw;
+    }
+  }
+</style>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#000080" />
+</head>
+<body>
+  <h1>Friends' Quotes</h1>
+  <div id="container">
+    <div id="quotesList" tabindex="0"></div>
+
+    <label for="friendName">Friend's Name:</label>
+    <input type="text" id="friendName" placeholder="Enter friend's name" autocomplete="off" />
+
+    <label for="quoteText">Quote:</label>
+    <input type="text" id="quoteText" placeholder="Enter quote" autocomplete="off" />
+
+    <div id="buttons">
+      <button id="addBtn">Add Quote</button>
+      <button id="deleteBtn">Delete Selected</button>
+    </div>
+
+    <div style="margin-top: 15px; text-align: center;">
+      <button id="randomBtn">Show Random Quote</button>
+      <div id="randomQuoteDisplay" style="margin-top: 10px; font-size: 12px; font-family: 'MS Sans Serif', Arial, sans-serif; min-height: 40px; border: 2px solid #000080; background: white; padding: 5px;"></div>
+    </div>
+  </div>
+
+<script>
+  // Load quotes from localStorage or init empty
+  let quotes = JSON.parse(localStorage.getItem('quotes')) || {};
+
+  const quotesList = document.getElementById('quotesList');
+  const friendNameInput = document.getElementById('friendName');
+  const quoteTextInput = document.getElementById('quoteText');
+  const addBtn = document.getElementById('addBtn');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const randomBtn = document.getElementById('randomBtn');
+  const randomQuoteDisplay = document.getElementById('randomQuoteDisplay');
+
+  let selectedIndex = null;
+
+  function saveQuotes() {
+    localStorage.setItem('quotes', JSON.stringify(quotes));
+  }
+
+  function renderQuotes() {
+    quotesList.innerHTML = '';
+    const friends = Object.keys(quotes).sort((a,b) => a.localeCompare(b));
+    let index = 0;
+    for (const friend of friends) {
+      for (const quote of quotes[friend]) {
+        const div = document.createElement('div');
+        div.className = 'quote-item';
+        div.textContent = `${friend}: ${quote}`;
+        div.dataset.index = index;
+        div.addEventListener('click', () => {
+          selectQuote(index);
+        });
+        quotesList.appendChild(div);
+        index++;
+      }
+    }
+    if (selectedIndex === null) {
+      friendNameInput.value = '';
+      quoteTextInput.value = '';
+      addBtn.textContent = 'Add Quote';
+    }
+  }
+
+  function selectQuote(index) {
+    const items = quotesList.querySelectorAll('.quote-item');
+    items.forEach(item => item.classList.remove('selected'));
+    if (items[index]) {
+      items[index].classList.add('selected');
+      selectedIndex = index;
+
+      let count = 0;
+      outer: for (const friend in quotes) {
+        for (const i in quotes[friend]) {
+          if (count === index) {
+            friendNameInput.value = friend;
+            quoteTextInput.value = quotes[friend][i];
+            break outer;
+          }
+          count++;
+        }
+      }
+      addBtn.textContent = 'Update Quote';
+    } else {
+      selectedIndex = null;
+      friendNameInput.value = '';
+      quoteTextInput.value = '';
+      addBtn.textContent = 'Add Quote';
+    }
+  }
+
+  addBtn.addEventListener('click', () => {
+    const friend = friendNameInput.value.trim();
+    const quote = quoteTextInput.value.trim();
+
+    if (!friend) {
+      alert("Please enter your friend's name.");
+      return;
+    }
+    if (!quote) {
+      alert("Please enter a quote.");
+      return;
+    }
+
+    if (selectedIndex === null) {
+      if (!quotes[friend]) {
+        quotes[friend] = [];
+      }
+      quotes[friend].push(quote);
+    } else {
+      let count = 0;
+      outer: for (const f in quotes) {
+        for (let i = 0; i < quotes[f].length; i++) {
+          if (count === selectedIndex) {
+            quotes[f].splice(i, 1);
+            if (quotes[f].length === 0) {
+              delete quotes[f];
+            }
+            break outer;
+          }
+          count++;
+        }
+      }
+      if (!quotes[friend]) {
+        quotes[friend] = [];
+      }
+      quotes[friend].push(quote);
+      selectedIndex = null;
+    }
+
+    friendNameInput.value = '';
+    quoteTextInput.value = '';
+    addBtn.textContent = 'Add Quote';
+
+    saveQuotes();
+    renderQuotes();
+  });
+
+  deleteBtn.addEventListener('click', () => {
+    if (selectedIndex === null) {
+      alert("Select a quote to delete.");
+      return;
+    }
+    let count = 0;
+    outer: for (const f in quotes) {
+      for (let i = 0; i < quotes[f].length; i++) {
+        if (count === selectedIndex) {
+          quotes[f].splice(i, 1);
+          if (quotes[f].length === 0) {
+            delete quotes[f];
+          }
+          break outer;
+        }
+        count++;
+      }
+    }
+    selectedIndex = null;
+    friendNameInput.value = '';
+    quoteTextInput.value = '';
+    addBtn.textContent = 'Add Quote';
+
+    saveQuotes();
+    renderQuotes();
+  });
+
+  randomBtn.addEventListener('click', () => {
+    const allQuotes = [];
+    for (const friend in quotes) {
+      for (const q of quotes[friend]) {
+        allQuotes.push(`${friend}: ${q}`);
+      }
+    }
+    if (allQuotes.length === 0) {
+      randomQuoteDisplay.textContent = 'No quotes available.';
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * allQuotes.length);
+    randomQuoteDisplay.textContent = allQuotes[randomIndex];
+  });
+
+  renderQuotes();
+</script>
+</body>
+</html>
